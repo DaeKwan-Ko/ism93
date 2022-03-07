@@ -1,0 +1,77 @@
+#------------------------------------------------------------------------------------
+# Aim: mapping of cleaned 150-nt pair-end reads to
+# Author: Dae Kwan Ko (dkko@msu.edu)
+# Last modified: 06-11-2021
+# Usage: shown below
+#------------------------------------------------------------------------------------
+
+### index TAIR10 (chr only) using bowtie2.2.3
+bowtie2-build -f TAIR10_chr_all.fa TAIR10_chr_all
+
+### mapping to the TAIR10 genome using bowtie2.2.3
+bowtie2 -x ${GENOME} -1 ${INPUT_R1} -2 ${INPUT_R2} -S ${OUTPUT} --threads 10 -X 1000
+
+### checking the mapping stat
+samtools flagstat ${INPUT} > ${OUTPUT}
+
+### extract reads mapped in correct orientation and within the insert size (flag: 99, 147, 83, 163)
+---
+#!/usr/bin/perl
+# mapq_distribution.pl
+# Dae Kwan Ko
+
+use warnings;
+use strict;
+use Getopt::Long;
+
+#perl 18bsa12-1_ext_properly_paired_K00392.pl --input x.sam --output x_filtered_properly_paired.sam
+
+my ($input_file, $output_file);
+
+# Get cmd line arguement values
+GetOptions(
+		'input=s' => \$input_file,         # a string
+        'output=s' => \$output_file,       # a string
+) or die;
+
+#use file tests to check for the existence of files before we start computation
+if ( ! -e $input_file){
+ die ($input_file." does not exist!\n")
+}
+if ( -e $output_file){
+ die ($output_file." already exists, please check before we overwrite your results!!!!\n")
+}
+
+my $eachline;
+my $leftover;
+
+open(INPUT, '<', $input_file) or die;
+open(OUTPUT, '>', $output_file) or die;
+while(<INPUT>){
+	chomp;
+	if (/^@/) {
+		$eachline = $_;
+		print OUTPUT ($eachline), "\n"; 
+	} elsif (/^K00392/) {
+		my @line = split (/\t/);
+		my $bitflag = $line[1];
+		if ($bitflag == 99) {
+		$eachline = $_;
+		print OUTPUT ($eachline), "\n";	
+		} elsif ($bitflag == 147) {
+		$eachline = $_;
+		print OUTPUT ($eachline), "\n";
+		} elsif ($bitflag == 83) {
+		$eachline = $_;
+		print OUTPUT ($eachline), "\n";
+		} elsif ($bitflag == 163) {
+		print OUTPUT ($eachline), "\n";
+		} else {
+		$leftover = $_;
+		}
+	}
+}
+
+close(OUTPUT);
+close(INPUT);
+---
