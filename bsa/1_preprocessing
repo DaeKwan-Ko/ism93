@@ -1,1 +1,25 @@
+#------------------------------------------------------------------------------------
+# Aim: preprocessing of 150-nt pair-end WGS data for further analysis
+# Author: Dae Kwan Ko (dkko@msu.edu)
+# Last modified: 03-07-2022
+# Usage: shown below
+#------------------------------------------------------------------------------------
 
+### examples of fastq files
+INPUT="${LINE}_R1_001.fastq.gz"
+OUTPUT="${LINE}_cutadapt.fastq"
+
+### m5sum check
+md5sum ${INPUT} > ${INPUT}_md5sum.txt
+
+### fastqc of raw data
+fastqc -o ${OUTPUT} -f fastq ${INPUT}
+
+### cutadapt
+cutadapt -f fastq -q 20 -m 30 -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT \
+-o ${OUTPUT_R1} \
+-p ${OUTPUT_R2} \
+${INPUT_R1} ${INPUT_R2}
+
+### fastqc of cleaned data
+fastqc -o ${OUTPUT} -f fastq ${INPUT}
