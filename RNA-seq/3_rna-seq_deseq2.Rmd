@@ -1,0 +1,232 @@
+---
+title: "n/a"
+author: "Dae Kwan Ko"
+date: "12/12/2022"
+output: html_document
+---
+
+## R Markdown
+
+```{r setup, include=FALSE, echo=FALSE}
+require("knitr")
+# for macbook pro
+# opts_knit$set(root.dir = "n/a")
+# for iMAC
+opts_knit$set(root.dir = "n/a")
+# By default, the working directory for R code chunks is the directory that contains the Rmd document. 
+rm(list=ls()) # Remove everything from the R environment. Important if you have some variables saved already
+```
+
+```{r loadLibs}
+rm(list=ls()) # Remove everything from the R environment. Important if you have some variables saved already
+require(limma)
+require(edgeR)
+require(DESeq2)
+require(RColorBrewer)
+require(gplots)
+require(ggplot2)
+require(apeglm)
+require(FactoMineR)
+require(factoextra)
+require(digest)
+require(dplyr)
+```
+
+```{r fileprep}
+rm(list=ls()) # Remove everything from the R environment. Important if you have some variables saved already
+myFiles <- list.files(pattern = glob2rx("*htseq.txt"), 
+                      all.files = T, 
+                      full.names = F) # Create a vector containing the names of your files
+myFiles # myFiles is the list of files in your working directory which match the pattern *_htseq.txt.
+myData <- lapply(myFiles, # Use list apply to apply the native R functi on read.table() to myFiles
+                 read.table, colClasses=c("character", "numeric"))
+myData
+
+# Name the elements of myData
+names(myData) <-c("C_D24_1","C_D24_2","C_D24_3","C_T24_1","C_T24_2","C_T24_3", 
+                  "P_D24_1","P_D24_2","P_D24_3","P_T24_1","P_T24_2","P_T24_3")
+summary(myData)
+head(myData$C_D24_1)
+tail(myData$C_D24_1) # Notice there is some metadata printed there that we should remove or those will be counted as gene names and expression counts
+
+rmLines <- function(x){x <- x[1:28775,]} ## This is a really quick and dirty solution. This is a function to select the first xxxxx lines.
+myData <- lapply(myData, rmLines) #Apply the rmLines() function to each object in the myData list.
+nrow(myData$C_D24_1) # Check to see how many lines there are in each element of myData now. There should be only 34129
+counts <- data.frame(row.names=myData$C_D24_1[,1],
+                     C_D24_1=myData$C_D24_1[,2], C_D24_2=myData$C_D24_2[,2], C_D24_3=myData$C_D24_3[,2], C_T24_1=myData$C_T24_1[,2], C_T24_2=myData$C_T24_2[,2], C_T24_3=myData$C_T24_3[,2],
+                     P_D24_1=myData$P_D24_1[,2], P_D24_2=myData$P_D24_2[,2], P_D24_3=myData$P_D24_3[,2], P_T24_1=myData$P_T24_1[,2], P_T24_2=myData$P_T24_2[,2], P_T24_3=myData$P_T24_3[,2])
+head(counts)
+```
+
+```{r fileprep2}
+# Remove genes with no expression in any samples
+# first, select columns for pair-wise comparisons 
+counts_col <- counts[,c("C_D24_1", "C_D24_2", "C_D24_3", "C_T24_1", "C_T24_2", "C_T24_3")]
+counts_pir1 <- counts[,c("P_D24_1", "P_D24_2", "P_D24_3", "P_T24_1", "P_T24_2", "P_T24_3")]
+
+# Evaluate the sum of each row and save to a new vector called geneTotals
+# ctrl vs. drought
+geneTotals_col <- rowSums(counts_col)
+geneTotals_pir1 <- rowSums(counts_pir1)
+
+# Genes with < 100 reads in all samples together were discarded;
+countsNonZero_col <- counts_col[geneTotals_col > 100,]
+countsNonZero_pir1 <- counts_pir1[geneTotals_pir1 > 100,]
+
+# See how many genes are left in the analysis
+nrow(countsNonZero_col)  #20551
+nrow(countsNonZero_pir1) #20652
+```
+
+
+```{r Start preparing your experimental design info}
+# define the columns of our data set according to their treatment type, the factor in this experiment. Arbitrarily named as ctrl and stress, but these two samples are not in the relationship.
+treatments <- as.factor(c(rep("ctrl",3),rep("stress",3)))
+
+# Create the experimental design with time as the factor.
+design <- model.matrix(~treatments)
+
+# Make a multidimensional scaling plot to quickly summarize the similarity of your samples.
+dge_col <- DGEList(counts=countsNonZero_col, 
+               group=treatments, 
+               remove.zeros=T) 
+dge_pir1 <- DGEList(counts=countsNonZero_pir1, 
+               group=treatments, 
+               remove.zeros=T) 
+
+
+plotMDS(dge_col,main="MDS",pch = 19,
+        col=c(rep("black",3),rep("red",3)))
+plotMDS(dge_pir1,main="MDS",pch = 19,
+        col=c(rep("black",3),rep("red",3)))
+
+```
+
+
+```{r DEDeq.object}
+# treatments was our column labels organized as factors
+colData <- DataFrame(treatments)
+
+# Take a look at the colData "data.frame" object. This is called S4 class object in R specifically designed to be operated on differently by various functions, similar to object oriented programming. It is not a normal data.frame.            
+colData
+
+# Compare to tissues object. This is an S3 class object, the simplest data type in R.
+treatments
+
+# Create the DESeq object from the counts matrix we made that has > 60 exprssed genes, uses the new colData object we made to label the treatments, and the same experimental design using treatments as the nominal categories. 
+dds_col <- DESeqDataSetFromMatrix(countsNonZero_col, colData=colData, design=formula(~treatments))
+dds_pir1 <- DESeqDataSetFromMatrix(countsNonZero_pir1, colData=colData, design=formula(~treatments))
+
+# Check the metadata on your DESeq data set object.
+dds_col
+dds_pir1
+
+# Estimate size factors to scale the columns of the count matrix, estimate dispersions, and fit model
+dds_col <- DESeq(dds_col)
+dds_pir1 <- DESeq(dds_pir1)
+
+# To see the normalization factors:
+sizeFactors(dds_col)
+```
+
+```{r shrinking}
+# Look at the top level of the DESeq data set.
+slotNames(dds_col)
+slotNames(dds_pir1)
+
+# We can look at the contents of these using the **@** symbol instead of **$** which is what would be used for an S3 class object.
+dds_col@colData
+
+# Check out the structure of the DESeq data set. You can see it is quite complex, and you can use this print out to help you subset any information from the data set.
+str(dds_col)
+
+# Plot gene dispersion correlations and other trends
+# Dispersion shows how much the variance for each gene deviates from the mean.
+geneDispersion_col <- dds_col@rowRanges@elementMetadata@listData$dispGeneEst
+geneDispersion_pir1 <- dds_pir1@rowRanges@elementMetadata@listData$dispGeneEst
+
+treatments_col <- dds_col@rowRanges@elementMetadata@listData$treatments_stress_vs_ctrl
+treatments_pir1 <- dds_pir1@rowRanges@elementMetadata@listData$treatments_stress_vs_ctrl
+
+# See how fold change corresponds to dispersion
+plot(treatments_col, geneDispersion_col, xlab="Fold change of expression (A/b)", title = "Col-0",
+     ylab="Gene dispersion estimate", pch=19, cex=0.4)
+plot(treatments_pir1, geneDispersion_pir1, xlab="Fold change of expression (A/b)", title = "pir1-1",
+     ylab="Gene dispersion estimate", pch=19, cex=0.4)
+
+# Check the trend of normalized counts to see how it corresponds to the dispersion estimate.
+plotDispEsts(dds_col)
+plotDispEsts(dds_pir1)
+
+# obtain results
+res_dds_col <- results(dds_col, name="treatments_stress_vs_ctrl")
+res_dds_pir1 <- results(dds_pir1, name="treatments_stress_vs_ctrl")
+
+# I wanted to test how lfcShrink can change the FC. LFCs shrinkage can be used to avoid bias in genes with low read coverage
+# ref: https://www.biostars.org/p/340269/
+# To use apeglm we specify a coefficient from the model to shrink, either by name or number as the coefficient appears in resultsNames(dds).
+resultsNames(dds_col)
+res.shr_dds_col <- lfcShrink(dds_col, coef="treatments_stress_vs_ctrl", type="apeglm")
+res.shr_dds_pir1 <- lfcShrink(dds_pir1, coef="treatments_stress_vs_ctrl", type="apeglm")
+# It is particularly useful for lowly expressed genes because they have high variability and shrinkage can reduce it. 
+```
+
+
+```{r MA plot}
+# In some samples, there were some differences between non-shrink and shrink, especially for those that were lowly expressed
+# shrinking is needed? will be used
+plotMA(res.shr_dds_col, ylim=c(-5,5), alpha = 0.05, main = "Col-0 with shrinking") #with shrinking
+plotMA(res_dds_col, ylim=c(-5,5), alpha = 0.05, main = "Col-0 without shrinking") #without shrinking
+
+plotMA(res.shr_dds_pir1, ylim=c(-5,5), alpha = 0.05, main = "pir1-1 with shrinking") #with shrinking
+plotMA(res_dds_pir1, ylim=c(-5,5), alpha = 0.05, main = "pir1-1 without shrinking") #without shrinking
+
+```
+
+
+Visualize the data in volcano plots (https://www.bioconductor.org/packages/release/bioc/vignettes/EnhancedVolcano/inst/doc/EnhancedVolcano.html)
+```{r volavano plot with labels}
+library(EnhancedVolcano)
+
+vol_col_wL <- EnhancedVolcano(res.shr_dds_col, lab = rownames(res.shr_dds_col), x = 'log2FoldChange', y = 'padj', pCutoff = 0.05, FCcutoff = 1, ylim = c(0,300), xlim = c(-8,12)) # with labels
+vol_col_nL <- EnhancedVolcano(res.shr_dds_col, lab = rownames(res.shr_dds_col), x = 'log2FoldChange', y = 'padj', pCutoff = 0.05, FCcutoff = 1, ylim = c(0,300), xlim = c(-8,12), labSize = 0) # without labels
+vol_pir1_wL <- EnhancedVolcano(res.shr_dds_pir1, lab = rownames(res.shr_dds_pir1), x = 'log2FoldChange', y = 'padj', pCutoff = 0.05, FCcutoff = 1, ylim = c(0,300), xlim = c(-8,12)) # with labels
+vol_pir1_nL <- EnhancedVolcano(res.shr_dds_pir1, lab = rownames(res.shr_dds_pir1), x = 'log2FoldChange', y = 'padj', pCutoff = 0.05, FCcutoff = 1, ylim = c(0,300), xlim = c(-8,12), labSize = 0) # without labels
+
+
+vol_col_wL
+vol_col_nL
+vol_pir1_wL
+vol_pir1_nL
+
+pdf(file = "Volacano plot_Col-0 with labels.pdf", width = 7, height = 7) # defaults to 7 x 7 inches
+vol_col_wL
+dev.off()
+
+pdf(file = "Volacano plot_Col-0 without labels.pdf", width = 7, height = 7) # defaults to 7 x 7 inches
+vol_col_nL
+dev.off()
+
+pdf(file = "Volacano plot_pir1-1 with labels.pdf", width = 7, height = 7) # defaults to 7 x 7 inches
+vol_pir1_wL
+dev.off()
+
+pdf(file = "Volacano plot_pir1-1 without labels.pdf", width = 7, height = 7) # defaults to 7 x 7 inches
+vol_pir1_nL
+dev.off()
+```
+
+```{r export results}
+# Removed rows with "NA" in P- value, which DESeq inputs when it detects extreme outliers in samples u sing Cook's distance calculation. These may have a significant effect on the model, or, perhaps the model we used (~treatments) does not account for some property of the data...
+res.shr_dds_col <- res.shr_dds_col[!(is.na(res.shr_dds_col$padj)),] 
+res.shr_dds_pir1 <- res.shr_dds_pir1[!(is.na(res.shr_dds_pir1$padj)),]  
+
+# List of genes that were differentially expressed
+deseq2_gene_list_col <- as.data.frame(res.shr_dds_col[res.shr_dds_col$padj < 0.05,])
+deseq2_gene_list_pir1 <- as.data.frame(res.shr_dds_pir1[res.shr_dds_pir1$padj < 0.05,])
+
+# export data
+write.table(deseq2_gene_list_col, "deseq2_gene_list_0.05_padj_Col-0.txt", sep="\t")
+write.table(deseq2_gene_list_pir1, "deseq2_gene_list_0.05_padj_pir1-1.txt", sep="\t")
+```
+
