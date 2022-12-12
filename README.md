@@ -1,6 +1,6 @@
 # ism93
 
-#The scripts provided in this repository allows to analyze raw (fastq.qz) data for whole genome sequencing analysis presented in our paper (under review):
+#The scripts provided in this repository allows to analyze raw (fastq.qz) data for whole genome sequencing and RNA-seq analyses presented in our paper (under review):
 
 "A signaling cohort of IRE1 and proteasome system controls cell fate determination in unresolved proteotoxic stress of the plant endoplasmic reticulum"
 
