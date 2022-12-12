@@ -1,0 +1,43 @@
+#------------------------------------------------------------------------------------
+# Aim: mapping of cleaned 50-nt single-end stranded RNA-seq data to the TAIR10 genome and calculate FPKM
+# Author: Dae Kwan Ko (dkko@msu.edu)
+# Last modified: 12-12-2021
+# Usage: shown below
+#------------------------------------------------------------------------------------
+
+### index TAIR10 (chr only) using bowtie2.2.3
+bowtie2-build -f ${INPUT} ${OUTPUT}
+
+### mapping to the TAIR10 genome using tophat2 (+ bowtie2)
+tophat2 -o ${OUTPUT} \
+-I 15000 \
+-i 10 \
+-G /mnt/home/dkko/genomes/arabidopsis_col_tair10/TAIR10_GFF3_genes.gff \
+--library-type fr-firststrand \
+/mnt/home/dkko/genomes/arabidopsis_col_tair10/TAIR10_chr_all \
+${INPUT}
+
+### calculate fpkm using cufflinks
+cufflinks -G /mnt/home/dkko/genomes/arabidopsis_col_tair10/TAIR10_GFF3_genes.gff \
+-b /mnt/home/dkko/genomes/arabidopsis_col_tair10/TAIR10_chr_all.fa \
+--library-type fr-firststrand \
+-q \
+-I 15000 \
+-o ${OUTPUT} \
+${INPUT}
+
+### sort accepted_hits.bam using samtools
+samtools sort -o ${OUTPUT} ${INPUT}
+
+### index accepted_hits.sort.bam using samtools
+samtools index ${INPUT}
+
+### read counts using htseq
+htseq-count --format=bam \
+--idattr=ID \
+--order=pos \
+--stranded=reverse \
+--minaqual=10 \
+--mode=union \
+--type=gene \
+${INPUT} ${GFF} > ${OUTPUT}
