@@ -162,19 +162,13 @@ plotDispEsts(dds_pir1)
 res_dds_col <- results(dds_col, name="treatments_stress_vs_ctrl")
 res_dds_pir1 <- results(dds_pir1, name="treatments_stress_vs_ctrl")
 
-# I wanted to test how lfcShrink can change the FC. LFCs shrinkage can be used to avoid bias in genes with low read coverage
-# ref: https://www.biostars.org/p/340269/
-# To use apeglm we specify a coefficient from the model to shrink, either by name or number as the coefficient appears in resultsNames(dds).
 resultsNames(dds_col)
 res.shr_dds_col <- lfcShrink(dds_col, coef="treatments_stress_vs_ctrl", type="apeglm")
 res.shr_dds_pir1 <- lfcShrink(dds_pir1, coef="treatments_stress_vs_ctrl", type="apeglm")
-# It is particularly useful for lowly expressed genes because they have high variability and shrinkage can reduce it. 
 ```
 
 
 ```{r MA plot}
-# In some samples, there were some differences between non-shrink and shrink, especially for those that were lowly expressed
-# shrinking is needed? will be used
 plotMA(res.shr_dds_col, ylim=c(-5,5), alpha = 0.05, main = "Col-0 with shrinking") #with shrinking
 plotMA(res_dds_col, ylim=c(-5,5), alpha = 0.05, main = "Col-0 without shrinking") #without shrinking
 
@@ -184,7 +178,6 @@ plotMA(res_dds_pir1, ylim=c(-5,5), alpha = 0.05, main = "pir1-1 without shrinkin
 ```
 
 
-Visualize the data in volcano plots (https://www.bioconductor.org/packages/release/bioc/vignettes/EnhancedVolcano/inst/doc/EnhancedVolcano.html)
 ```{r volavano plot with labels}
 library(EnhancedVolcano)
 
