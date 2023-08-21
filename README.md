@@ -1,6 +1,6 @@
 # A signaling cohort of IRE1 and proteasome system controls cell fate determination in unresolved proteotoxic stress of the plant endoplasmic reticulum
 
-#The scripts provided in this repository allows to analyze raw (fastq.qz) data for whole genome sequencing and RNA-seq analyses presented in our paper (under review):
+#The scripts provided in this repository allow analyzing raw (fastq.qz) data for whole genome sequencing and RNA-seq analyses presented in the following paper (https://doi.org/10.1038/s41477-023-01480-3):
 
 Title: A signaling cohort of IRE1 and proteasome system controls cell fate determination in unresolved proteotoxic stress of the plant endoplasmic reticulum
 
