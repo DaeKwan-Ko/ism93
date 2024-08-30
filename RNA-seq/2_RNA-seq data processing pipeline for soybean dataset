@@ -1,0 +1,89 @@
+#------------------------------------------------------------------------------------
+RNA-seq Data Processing Pipeline for Soybean Dataset
+Data Source:
+GEO: GSE57606
+GEO: GSE46096
+GEO: GSE99109
+Data format: single-end 50 nt
+Paper Reference: DOI: 10.1073/pnas.1918441117
+Author: Dae Kwan Ko (dkko@msu.edu)
+Last Modified: 2024-08-30
+Overview: This repository provides a detailed RNA-seq data processing pipeline for the soybean dataset. The pipeline includes steps for merging sequencing files, quality control, adapter trimming, alignment, and quantification, leveraging a suite of bioinformatics tools.
+#------------------------------------------------------------------------------------
+
+Step 1: merge sequencing files
+# Merge sequencing files from the same sample into a single file
+cat file1.fastq file2.fastq > merged.fastq
+
+Step 2: count reads of raw files
+# Count the number of lines in the raw FASTQ file
+wc -l ${INPUT} > ${OUTPUT}
+
+Step 3: compress raw files
+# Compress the raw FASTQ file
+gzip ${INPUT}.fastq
+
+Step 4: quality control on raw files (FastQC)
+# Perform quality control on the raw FASTQ file
+fastqc -o ${OUTPUT} -f fastq ${INPUT}
+
+Step 5: adapter trimming (Cutadapt)
+# Trim adapters from the sequencing reads
+cutadapt -q 20,20 -u 2 -m 20 -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
+-g AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT \
+-o ${OUTPUT} ${INPUT}
+
+Step 6: count reads of cleaned files
+# Count the number of lines in the cleaned FASTQ file
+wc -l ${INPUT} > ${OUTPUT}
+
+Step 7: compress cleaned files
+# Compress the cleaned FASTQ file
+gzip ${INPUT}.fastq
+
+Step 8: quality control on cleaned files (FastQC)
+# Perform quality control on the cleaned FASTQ file
+fastqc -o ${OUTPUT} -f fastq ${INPUT}
+
+Step 9: genome indexing (Bowtie2)
+# Build a Bowtie2 index for the maize genome
+bowtie2-build -f Gmax_880_v6.0.fa Gmax_880_v6.0
+
+Step 10: Alignment to the genome (Tophat2 via Bowtie2)
+# Map the sequencing reads to the maize genome
+tophat2 -o ${OUTPUT} \
+-I 15000 \
+-i 10 \
+-G ${GFF} \
+--library-type fr-firststrand \
+/mnt/home/dkko/genomes/Wm82.a6.v1/Gmax_880_v6.0 \
+${INPUT}
+
+Step 11: sort BAM files (Samtools)
+# Sort the BAM file
+samtools sort -o ${OUTPUT} ${INPUT}
+
+Step 12: Index BAM files (Samtools)
+# Index the BAM file
+samtools index ${INPUT}
+
+Step 13: Transcript quantification (Cufflinks)
+# Calculate FPKM values with Cufflinks
+cufflinks -G ${GFF} \
+-b ${FASTA} \
+--library-type fr-firststrand \
+-q \
+-I 15000 \
+-o ${OUTPUT} \
+${INPUT}
+
+Step 14: read count (HTSeq-count)
+# Perform read counting with HTSeq-count
+htseq-count --format=bam \
+--idattr=ID \
+--order=pos \
+--stranded=reverse \
+--minaqual=10 \
+--mode=union \
+--type=gene \
+${INPUT} ${GFF} > ${OUTPUT}
