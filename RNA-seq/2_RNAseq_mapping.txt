@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------------
-# Aim: mapping of cleaned 50-nt single-end stranded RNA-seq data to the TAIR10 genome and calculate FPKM
+# Aim: mapping of cleaned 150-nt paired-end stranded RNA-seq data to the TAIR10 genome and calculate FPKM
 # Author: Dae Kwan Ko (dkko@msu.edu)
 # Last modified: 12-12-2021
 # Usage: shown below
