@@ -1,0 +1,24 @@
+#------------------------------------------------------------------------------------
+# Aim: mapping of cleaned 150-nt pair-end reads to
+# Author: Dae Kwan Ko (dkko@msu.edu)
+# Last modified: 01-27-2025
+# Usage: finding and annotating SNPs using SHOREmap
+#------------------------------------------------------------------------------------
+
+### mpileup and bcftools
+samtools mpileup -u -t AD,DP -f ${GENOME} ${INPUT} > ${OUTPUT}
+bcftools call --skip-variants indels --multiallelic-caller --variants-only -O v ${INPUT} -o ${OUTPUT}
+
+### SHOREmap convert the vcf file into the file format required for shoremap analysis
+SHOREmap convert --marker ${INPUT} --folder ${OUTPUT} -runid 1
+
+### SHOREmap extract
+SHOREmap extract --chrsizes ${CHR} --folder ${FOLDER} --marker ${MARKER} --consen ${CONSEN} -verbose
+
+### SHOREmap backcross
+SHOREmap backcross --chrsizes ${CHR} --marker ${MARKER} --consen ${CONSEN} --folder ${FOLDER} \
+-plot-bc --marker-score 25 --marker-freq 0.0 --min-coverage 10 --max-coverage 200 \
+--bg ${BG} --bg-cov 1 --bg-freq 0.4 --bg-score 1 -non-EMS --cluster 1 --marker-hit 1 -verbose
+
+### SHOREmap annotate
+SHOREmap annotate --chrsizes ${CHR} --snp ${SNP} --chrom 5 --start 1 --end 26975502 --genome ${GENOME} --gff ${GFF} --folder ${FOLDER}
