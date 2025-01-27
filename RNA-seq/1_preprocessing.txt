@@ -1,0 +1,40 @@
+#------------------------------------------------------------------------------------
+# Aim: preprocessing of 150-nt pair-end RNA-seq data for further analysis
+# Author: Dae Kwan Ko (dkko@msu.edu)
+# Last modified: 01-27-2025
+# Usage: This repository provides a detailed WGS preprocessing pipeline. The pipeline includes steps for merging sequencing files, quality control and adapter trimming.  
+#------------------------------------------------------------------------------------
+
+Step 1: count reads of raw files
+# Count the number of lines in the raw FASTQ file
+wc -l ${INPUT} > ${OUTPUT}
+
+Step 2: compress raw files
+# Compress the raw FASTQ file
+gzip ${INPUT}.fastq
+
+Step 3: quality control on raw files (FastQC)
+# Perform quality control on the raw FASTQ file
+fastqc -o ${OUTPUT} -f fastq ${INPUT}
+
+Step 4: adapter trimming (Cutadapt)
+# Trim adapters from the sequencing reads
+cutadapt -q 20,20 -u 2 -m 20 -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC \
+-g AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT \
+-o ${OUTPUT} ${INPUT}
+
+Step 5: count reads of cleaned files
+# Count the number of lines in the cleaned FASTQ file
+wc -l ${INPUT} > ${OUTPUT}
+
+Step 6: compress cleaned files
+# Compress the cleaned FASTQ file
+gzip ${INPUT}.fastq
+
+Step 7: quality control on cleaned files (FastQC)
+# Perform quality control on the cleaned FASTQ file
+fastqc -o ${OUTPUT} -f fastq ${INPUT}
+
+Step 8: compressed cleaned files
+# Compress cleaned files to save space
+gzip ${INPUT}
