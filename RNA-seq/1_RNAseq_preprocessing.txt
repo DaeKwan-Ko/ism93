@@ -2,7 +2,7 @@
 # Aim: preprocessing of 150-nt pair-end RNA-seq data for further analysis
 # Author: Dae Kwan Ko (dkko@msu.edu)
 # Last modified: 01-27-2025
-# Usage: This repository provides a detailed WGS preprocessing pipeline. The pipeline includes steps for merging sequencing files, quality control and adapter trimming.  
+# Usage: Preprocessing of sequencing files  
 #------------------------------------------------------------------------------------
 
 Step 1: count reads of raw files
