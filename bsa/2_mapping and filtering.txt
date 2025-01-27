@@ -75,3 +75,21 @@ while(<INPUT>){
 close(OUTPUT);
 close(INPUT);
 ---
+
+### Convert to bam (>=mapq 10)
+samtools view -S ${INPUT} -q 10 -b -h -o ${OUTPUT} -@ 5
+
+### flagstat on filtered bam files
+samtools flagstat ${INPUT} > ${OUTPUT}
+
+### sort before rmdup
+samtools sort -o ${OUTPUT} ${INPUT} -@ 5
+
+### remove PCR duplicates
+samtools rmdup ${INPUT} ${OUTPUT}
+
+### flagstat
+samtools flagstat ${INPUT} > ${OUTPUT}
+
+### index
+samtools index ${INPUT}
