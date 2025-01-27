@@ -1,25 +1,31 @@
 #------------------------------------------------------------------------------------
 # Aim: preprocessing of 150-nt pair-end WGS data for further analysis
 # Author: Dae Kwan Ko (dkko@msu.edu)
-# Last modified: 03-07-2022
-# Usage: shown below
+# Last modified: 01-27-2025
+# Usage: This repository provides a detailed WGS preprocessing pipeline. The pipeline includes steps for merging sequencing files, quality control and adapter trimming.  
 #------------------------------------------------------------------------------------
 
-### examples of fastq files
+### Step 1: examples of fastq files
 INPUT="${LINE}_R1_001.fastq.gz"
 OUTPUT="${LINE}_cutadapt.fastq"
 
-### m5sum check
+### Step 2: m5sum check
 md5sum ${INPUT} > ${INPUT}_md5sum.txt
 
-### fastqc of raw data
+### Step 3: fastqc of raw data
 fastqc -o ${OUTPUT} -f fastq ${INPUT}
 
-### cutadapt
+### Step 4: cutadapt
 cutadapt -f fastq -q 20 -m 30 -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT \
 -o ${OUTPUT_R1} \
 -p ${OUTPUT_R2} \
 ${INPUT_R1} ${INPUT_R2}
 
-### fastqc of cleaned data
+### Step 5: fastqc of cleaned data
 fastqc -o ${OUTPUT} -f fastq ${INPUT}
+
+### Step 6: multiqc
+multiqc /mnt/scratch/dkko/project_bsa/28604-C_19.1_28604-6/3_fastqc
+
+### Step 7: compressed cleaned files
+gzip ${INPUT}
